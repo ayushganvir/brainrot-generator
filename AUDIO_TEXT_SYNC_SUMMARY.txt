@@ -1,0 +1,201 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║          🎯 AUDIO-TEXT SYNCHRONIZATION EXPLAINED 🎯          ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+QUESTION: How are audio and text captions synchronized?
+
+ANSWER: We use OpenAI Whisper STT (Speech-to-Text)
+
+═══════════════════════════════════════════════════════════════
+
+📊 THE COMPLETE FLOW
+═══════════════════════════════════════════════════════════════
+
+Step 1: GENERATE AUDIO (ElevenLabs)
+────────────────────────────────────
+For each dialogue line:
+  → Peter: "Y'know, Stewie..." → segment_0.mp3 (3.2s)
+  → Stewie: "Indeed, Peter..." → segment_1.mp3 (4.1s)
+  → Peter: "Heh, yeah..." → segment_2.mp3 (2.5s)
+  → Stewie: "A noble..." → segment_3.mp3 (3.8s)
+
+Step 2: CONCATENATE (with 1s gaps)
+────────────────────────────────────
+segment_0 (0.0 - 3.2s)
+  [1 second gap]
+segment_1 (4.2 - 8.3s)
+  [1 second gap]
+segment_2 (9.3 - 11.8s)
+  [1 second gap]
+segment_3 (12.8 - 16.6s)
+
+Result: final_audio.mp3 (16.6 seconds)
+
+Step 3: GENERATE CAPTIONS (Whisper)
+────────────────────────────────────
+Send final_audio.mp3 to OpenAI Whisper
+
+Whisper returns:
+  - Full transcription
+  - Word-level timestamps
+
+Example output:
+  "Y'know" → 0.00 - 0.52s
+  "Stewie" → 0.52 - 1.08s
+  "OpenAI" → 1.08 - 1.64s
+  "is" → 1.64 - 1.82s
+  [1s silence gap here - Whisper handles it]
+  "Indeed" → 4.20 - 4.78s
+  "Peter" → 4.78 - 5.24s
+  ...
+
+Step 4: VIDEO COMPOSITION
+────────────────────────────────────
+1. Load background video
+2. Loop if too short (auto-loop feature)
+3. Crop to 9:16 vertical
+4. Sync final_audio.mp3
+5. Overlay captions using Whisper timestamps
+6. Render final MP4
+
+═══════════════════════════════════════════════════════════════
+
+✅ WHY WHISPER?
+═══════════════════════════════════════════════════════════════
+
+✓ SIMPLE: Works automatically, no manual timing
+✓ ACCURATE: State-of-the-art speech recognition
+✓ HANDLES EVERYTHING: Gaps, concatenation, all automatic
+✓ PROVEN: Already working in your Topic Mode
+✓ COST-EFFECTIVE: ~$0.006 per minute
+
+═══════════════════════════════════════════════════════════════
+
+🔄 ALTERNATIVE: ElevenLabs Timestamps
+═══════════════════════════════════════════════════════════════
+
+ElevenLabs DOES offer timestamps via convert_with_timestamps API
+
+Advantages:
+  ✓ Character-level precision
+  ✓ Direct from TTS source
+
+Challenges:
+  ✗ Need to manually track cumulative timing
+  ✗ Must account for 1s gaps we added
+  ✗ Convert character → word level
+  ✗ More complex implementation
+
+Example calculation needed:
+  Segment 0: 0.0 - 3.2s
+  + 1s gap
+  Segment 1: Need to offset by 4.2s (3.2 + 1.0)
+  + 1s gap
+  Segment 2: Need to offset by 9.3s (3.2 + 1.0 + 4.1 + 1.0)
+  ...and so on
+
+═══════════════════════════════════════════════════════════════
+
+🎯 CURRENT IMPLEMENTATION
+═══════════════════════════════════════════════════════════════
+
+File: app.py → generate_video_script_mode()
+
+# Generate audio with ElevenLabs
+audio_result = generate_dialogue_audio(
+    elevenlabs_api_key, 
+    dialogue, 
+    voice_mapping
+)
+
+# Concatenate with 1s gaps
+final_audio = concatenate_audio_segments(
+    audio_result["segments"],
+    "/tmp/final_audio.mp3"
+)
+
+# Generate captions via Whisper STT
+caption_handler = CaptionHandler()
+subtitles_path, caption_clips = await caption_handler.process(
+    final_audio,  # ← Whisper analyzes this
+    captions_color="white",
+    shadow_color="black"
+)
+
+# Compose final video
+final_video = CompositeVideoClip([video_with_audio] + caption_clips)
+
+═══════════════════════════════════════════════════════════════
+
+📂 KEY FILES
+═══════════════════════════════════════════════════════════════
+
+app.py
+  → generate_video_script_mode() endpoint
+  → Orchestrates the entire flow
+
+elevenlabs_utils.py
+  → generate_dialogue_audio() - Creates audio per speaker
+  → concatenate_audio_segments() - Combines with gaps
+
+mediachain/.../caption_handler.py
+  → Calls Whisper STT
+  → Converts timestamps → caption clips
+
+═══════════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION
+═══════════════════════════════════════════════════════════════
+
+READ THESE:
+
+1. CAPTION_SYNC_GUIDE.md
+   → Full explanation with diagrams
+   → Whisper vs ElevenLabs comparison
+   → Technical details
+
+2. elevenlabs_timestamps_util.py
+   → Reference implementation for ElevenLabs timestamps
+   → NOT currently used (optional for future)
+
+═══════════════════════════════════════════════════════════════
+
+💡 SUMMARY
+═══════════════════════════════════════════════════════════════
+
+BEFORE: How was sync happening in Topic Mode?
+  1. Generate script with GPT
+  2. Generate audio with OpenAI TTS
+  3. Use Whisper to get timestamps
+  4. Render captions
+
+NOW: How is sync happening in Script Mode?
+  1. User provides script
+  2. Generate audio with ElevenLabs (per speaker)
+  3. Concatenate audio (with 1s gaps)
+  4. Use Whisper to get timestamps ← SAME AS BEFORE!
+  5. Render captions
+
+KEY INSIGHT:
+  It doesn't matter that we use ElevenLabs for audio!
+  Whisper still listens to the FINAL audio file and
+  provides perfect timestamps automatically. 🎯
+
+═══════════════════════════════════════════════════════════════
+
+✅ STATUS: FULLY IMPLEMENTED AND WORKING!
+═══════════════════════════════════════════════════════════════
+
+Your video generation now:
+  ✓ Uses ElevenLabs for high-quality voices
+  ✓ Adds 1s gaps between speaker changes
+  ✓ Uses Whisper for accurate caption timing
+  ✓ Combines everything into professional videos
+
+No changes needed - it's production ready! 🚀
+
+═══════════════════════════════════════════════════════════════
+
+

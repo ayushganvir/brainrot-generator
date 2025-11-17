@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Speaker Video Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload-input {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .file-upload-label:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-upload-label.has-file {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .speakers-section {
+            display: none;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .speakers-section.active {
+            display: block;
+        }
+
+        .speaker-config {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .speaker-config-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .speaker-avatar-upload {
+            margin-top: 5px;
+        }
+        
+        .speaker-avatar-upload label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .speaker-avatar-input {
+            display: none;
+        }
+        
+        .avatar-upload-label {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #f0f4ff;
+            border: 1px solid #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .avatar-upload-label:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .speaker-avatar-preview {
+            margin-top: 8px;
+            display: inline-block;
+        }
+        
+        .speaker-avatar-preview img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            display: block;
+        }
+        
+        .speaker-avatar-preview .remove-avatar {
+            margin-top: 5px;
+            padding: 3px 10px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .speaker-avatar-preview .remove-avatar:hover {
+            background: #d32f2f;
+        }
+
+        .speaker-name {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .dialogue-preview {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .dialogue-line {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-left: 3px solid #667eea;
+            padding-left: 12px;
+        }
+
+        .dialogue-line .speaker {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .image-upload-wrapper {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .dialogue-image-input {
+            display: none;
+        }
+
+        .image-upload-label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .image-upload-label:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+        }
+
+        .image-upload-label.drag-over {
+            border-color: #667eea;
+            background: #e8f0ff;
+            transform: scale(1.02);
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .image-preview img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .image-preview .remove-image {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 5px 15px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .image-preview .remove-image:hover {
+            background: #d32f2f;
+        }
+
+        .audio-player {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+        }
+
+        .audio-player.active {
+            display: block;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .success-message {
+            color: #4caf50;
+            font-weight: 600;
+        }
+
+        .error-message {
+            color: #f44336;
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .script-example {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align: right; margin-bottom: 10px;">
+            <a href="/" style="color: #667eea; text-decoration: none; font-weight: 600;">
+                ← Switch to Topic Mode (AI-Generated)
+            </a>
+        </div>
+        <h1>🎭 Multi-Speaker Video Generator</h1>
+        <p class="subtitle">Create videos with dialogue between two speakers using ElevenLabs voices</p>
+
+        <div class="info-box">
+            <strong>📝 Script Format:</strong> Write dialogue with two speakers in this format:<br>
+            <code>SpeakerName: Their dialogue here</code>
+        </div>
+
+        <div class="script-example">Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.
+Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning.</div>
+
+        <form id="videoForm">
+            <!-- Step 1: Upload Video -->
+            <div class="form-group">
+                <label for="video">1. Upload Background Video</label>
+                <div class="file-upload">
+                    <input type="file" id="video" class="file-upload-input" accept="video/*">
+                    <label for="video" class="file-upload-label" id="fileLabel">
+                        📁 Click to upload video (MP4, MOV, AVI, MKV)
+                    </label>
+                    <div id="fileName" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
+                </div>
+            </div>
+
+            <!-- Step 2: Enter Script -->
+            <div class="form-group">
+                <label for="script">2. Enter Your Dialogue Script (2 speakers required)</label>
+                <textarea 
+                    id="script" 
+                    name="script" 
+                    placeholder="Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.&#10;Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning."
+                ></textarea>
+                <button type="button" class="btn btn-secondary" id="parseBtn" style="margin-top: 10px;">
+                    Parse Script & Load Voices
+                </button>
+            </div>
+
+            <!-- Step 3: Assign Voices (shown after parsing) -->
+            <div class="speakers-section" id="speakersSection">
+                <h3>3. Assign Voices to Speakers</h3>
+                <div id="voiceAssignments"></div>
+                
+                <div class="dialogue-preview">
+                    <strong>Dialogue Preview:</strong>
+                    <div id="dialoguePreview"></div>
+                </div>
+
+                <button type="button" class="btn btn-secondary" id="previewAudioBtn">
+                    🎧 Preview Audio
+                </button>
+            </div>
+
+            <!-- Audio Preview Player -->
+            <div class="audio-player" id="audioPlayer">
+                <strong class="success-message">✓ Audio Preview Ready!</strong>
+                <audio id="audioElement" controls></audio>
+            </div>
+
+            <!-- Step 4: Settings -->
+            <div class="form-group">
+                <label>4. Video Settings</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="loopIfShort" name="loopIfShort" checked>
+                    <label for="loopIfShort" style="margin-bottom: 0;">🔄 Auto-loop video if too short</label>
+                </div>
+            </div>
+
+            <!-- Step 5: Generate -->
+            <button type="submit" class="btn" id="submitBtn" disabled>
+                🎬 Generate Video (Preview audio first)
+            </button>
+        </form>
+
+        <div id="resultMessage" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let parsedDialogue = null;
+        let parsedSpeakers = null;
+        let availableVoices = [];
+        let previewAudioPath = null; // Store preview audio path for reuse
+        let previewJobId = null; // Store preview job ID for segment data reuse
+        let dialogueImages = {}; // Maps dialogue index to File object
+        let speakerAvatars = {
+            speaker1: null,  // File object for speaker 1
+            speaker2: null   // File object for speaker 2
+        };
+
+        const videoInput = document.getElementById('video');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileName = document.getElementById('fileName');
+        const parseBtn = document.getElementById('parseBtn');
+        const speakersSection = document.getElementById('speakersSection');
+        const voiceAssignments = document.getElementById('voiceAssignments');
+        const dialoguePreview = document.getElementById('dialoguePreview');
+        const previewAudioBtn = document.getElementById('previewAudioBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioElement = document.getElementById('audioElement');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultMessage = document.getElementById('resultMessage');
+
+        // Function to show avatar preview
+        function showAvatarPreview(file, previewId, speakerIndex) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const previewDiv = document.getElementById(previewId);
+                previewDiv.innerHTML = `
+                    <img src="${e.target.result}" alt="Avatar">
+                    <button class="remove-avatar" data-speaker="${speakerIndex}">Remove</button>
+                `;
+                
+                // Add remove listener
+                previewDiv.querySelector('.remove-avatar').addEventListener('click', () => {
+                    if (speakerIndex === 0) {
+                        speakerAvatars.speaker1 = null;
+                        document.getElementById('speaker-avatar-0').value = '';
+                    } else {
+                        speakerAvatars.speaker2 = null;
+                        document.getElementById('speaker-avatar-1').value = '';
+                    }
+                    previewDiv.innerHTML = '';
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Handle file selection
+        videoInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                fileLabel.classList.add('has-file');
+                fileLabel.textContent = '✅ Video selected';
+                fileName.textContent = `File: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+        });
+
+        // Parse script and load voices
+        parseBtn.addEventListener('click', async () => {
+            const script = document.getElementById('script').value;
+            if (!script.trim()) {
+                alert('Please enter a script');
+                return;
+            }
+
+            parseBtn.disabled = true;
+            parseBtn.innerHTML = '<span class="loading"></span> Parsing...';
+
+            try {
+                // Parse script
+                const formData = new FormData();
+                formData.append('script', script);
+
+                const parseResponse = await fetch('/api/parse-script', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const parseData = await parseResponse.json();
+
+                if (parseData.status !== 'success') {
+                    throw new Error(parseData.message || 'Failed to parse script');
+                }
+
+                parsedDialogue = parseData.dialogue;
+                parsedSpeakers = parseData.speakers;
+
+                // Show dialogue preview with image upload option
+                dialoguePreview.innerHTML = parsedDialogue.map((d, index) => `
+                    <div class="dialogue-line">
+                        <span class="speaker">${d.speaker}:</span> ${d.text}
+                        <div class="image-upload-wrapper">
+                            <input type="file" 
+                                   id="dialogue-image-${index}" 
+                                   accept="image/*"
+                                   class="dialogue-image-input"
+                                   data-index="${index}">
+                            <label for="dialogue-image-${index}" class="image-upload-label">
+                                📷 Drag image here or click to upload (optional)
+                            </label>
+                            <div id="preview-${index}" class="image-preview"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Fetch available voices
+                const voicesResponse = await fetch('/api/voices/elevenlabs');
+                const voicesData = await voicesResponse.json();
+
+                if (voicesData.status !== 'success') {
+                    throw new Error('Failed to fetch voices');
+                }
+
+                availableVoices = voicesData.voices;
+
+                // Create voice selection dropdowns and avatar uploads
+                voiceAssignments.innerHTML = parsedSpeakers.map((speaker, index) => `
+                    <div class="speaker-config">
+                        <div class="speaker-config-row">
+                            <div class="speaker-name">${speaker}</div>
+                            <select id="voice_${index}" class="voice-select">
+                                <option value="">Select voice...</option>
+                                ${availableVoices.map(v => `
+                                    <option value="${v.voice_id}">${v.name}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="speaker-avatar-upload">
+                            <label>Speaker Avatar (optional):</label>
+                            <input type="file" 
+                                   id="speaker-avatar-${index}" 
+                                   accept="image/*"
+                                   class="speaker-avatar-input"
+                                   data-speaker-index="${index}">
+                            <label for="speaker-avatar-${index}" class="avatar-upload-label">
+                                📷 Upload Avatar
+                            </label>
+                            <div id="speaker-preview-${index}" class="speaker-avatar-preview"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                speakersSection.classList.add('active');
+                parseBtn.textContent = '✓ Script Parsed Successfully';
+                
+                // Add listeners for speaker avatar uploads
+                document.getElementById('speaker-avatar-0').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Validate file type
+                        if (!file.type.startsWith('image/')) {
+                            alert('Please select an image file');
+                            return;
+                        }
+                        // Validate file size (10MB max)
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('Image too large. Maximum size is 10MB');
+                            return;
+                        }
+                        
+                        speakerAvatars.speaker1 = file;
+                        showAvatarPreview(file, 'speaker-preview-0', 0);
+                    }
+                });
+                
+                document.getElementById('speaker-avatar-1').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Validate file type
+                        if (!file.type.startsWith('image/')) {
+                            alert('Please select an image file');
+                            return;
+                        }
+                        // Validate file size (10MB max)
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('Image too large. Maximum size is 10MB');
+                            return;
+                        }
+                        
+                        speakerAvatars.speaker2 = file;
+                        showAvatarPreview(file, 'speaker-preview-1', 1);
+                    }
+                });
+                
+                // Add listeners to voice dropdowns to invalidate preview when changed
+                document.getElementById('voice_0').addEventListener('change', () => {
+                    previewAudioPath = null;
+                    previewJobId = null;
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '🎬 Generate Video (Preview audio first)';
+                    audioPlayer.classList.remove('active');
+                });
+                
+                document.getElementById('voice_1').addEventListener('change', () => {
+                    previewAudioPath = null;
+                    previewJobId = null;
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '🎬 Generate Video (Preview audio first)';
+                    audioPlayer.classList.remove('active');
+                });
+
+                // Add listeners for image uploads
+                parsedDialogue.forEach((d, index) => {
+                    const fileInput = document.getElementById(`dialogue-image-${index}`);
+                    const label = document.querySelector(`label[for="dialogue-image-${index}"]`);
+                    const previewDiv = document.getElementById(`preview-${index}`);
+                    
+                    if (fileInput) {
+                        // Handle file selection
+                        fileInput.addEventListener('change', (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                // Validate file type
+                                if (!file.type.startsWith('image/')) {
+                                    alert('Please select an image file');
+                                    return;
+                                }
+                                
+                                // Validate file size (10MB max)
+                                if (file.size > 10 * 1024 * 1024) {
+                                    alert('Image too large. Maximum size is 10MB');
+                                    return;
+                                }
+                                
+                                // Store file
+                                dialogueImages[index] = file;
+                                
+                                // Show preview
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                    previewDiv.innerHTML = `
+                                        <img src="${ev.target.result}" alt="Preview">
+                                        <button class="remove-image" data-index="${index}">Remove</button>
+                                    `;
+                                    
+                                    // Add remove listener
+                                    previewDiv.querySelector('.remove-image').addEventListener('click', () => {
+                                        delete dialogueImages[index];
+                                        previewDiv.innerHTML = '';
+                                        fileInput.value = '';
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        });
+                        
+                        // Handle drag and drop
+                        label.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            label.classList.add('drag-over');
+                        });
+                        
+                        label.addEventListener('dragleave', () => {
+                            label.classList.remove('drag-over');
+                        });
+                        
+                        label.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            label.classList.remove('drag-over');
+                            
+                            const file = e.dataTransfer.files[0];
+                            if (file && file.type.startsWith('image/')) {
+                                fileInput.files = e.dataTransfer.files;
+                                fileInput.dispatchEvent(new Event('change'));
+                            } else {
+                                alert('Please drop an image file');
+                            }
+                        });
+                    }
+                });
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                parseBtn.textContent = 'Parse Script & Load Voices';
+            } finally {
+                parseBtn.disabled = false;
+            }
+        });
+
+        // Preview audio
+        previewAudioBtn.addEventListener('click', async () => {
+            const voice1 = document.getElementById('voice_0').value;
+            const voice2 = document.getElementById('voice_1').value;
+
+            if (!voice1 || !voice2) {
+                alert('Please select voices for both speakers');
+                return;
+            }
+
+            previewAudioBtn.disabled = true;
+            previewAudioBtn.innerHTML = '<span class="loading"></span> Generating Preview...';
+
+            try {
+                const formData = new FormData();
+                formData.append('script', document.getElementById('script').value);
+                formData.append('speaker1_voice', voice1);
+                formData.append('speaker2_voice', voice2);
+
+                const response = await fetch('/api/preview-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate preview');
+                }
+
+                // Capture the audio path and job ID from response headers for reuse
+                previewAudioPath = response.headers.get('X-Audio-Path');
+                previewJobId = response.headers.get('X-Preview-Job-Id');
+                console.log('Preview audio path:', previewAudioPath);
+                console.log('Preview job ID:', previewJobId);
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                audioElement.src = audioUrl;
+                audioPlayer.classList.add('active');
+
+                previewAudioBtn.textContent = '✓ Preview Ready - Click to Regenerate';
+                
+                // Enable the Generate Video button now that we have preview audio
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🎬 Generate Video';
+                submitBtn.style.opacity = '1';
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                previewAudioBtn.disabled = false;
+                if (previewAudioBtn.textContent.includes('Generating')) {
+                    previewAudioBtn.textContent = '🎧 Preview Audio';
+                }
+            }
+        });
+
+        // Generate video
+        document.getElementById('videoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!selectedFile) {
+                alert('Please select a video file');
+                return;
+            }
+
+            if (!parsedSpeakers) {
+                alert('Please parse the script first');
+                return;
+            }
+
+            const voice1 = document.getElementById('voice_0').value;
+            const voice2 = document.getElementById('voice_1').value;
+
+            if (!voice1 || !voice2) {
+                alert('Please select voices for both speakers');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading"></span> Generating Video...';
+            resultMessage.innerHTML = '<div class="info-box">Processing... This may take several minutes.</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('video', selectedFile);
+                formData.append('script', document.getElementById('script').value);
+                formData.append('speaker1_voice', voice1);
+                formData.append('speaker2_voice', voice2);
+                formData.append('loop_if_short', document.getElementById('loopIfShort').checked);
+                
+                // Add dialogue images if any
+                const imageIndexMap = {};
+                for (const [index, file] of Object.entries(dialogueImages)) {
+                    if (file) {
+                        formData.append('dialogue_images', file);
+                        imageIndexMap[index] = file.name;
+                    }
+                }
+                formData.append('image_indices', JSON.stringify(imageIndexMap));
+                console.log('Uploading images for dialogue indices:', Object.keys(imageIndexMap));
+                
+                // Add speaker avatars if any
+                if (speakerAvatars.speaker1) {
+                    formData.append('speaker1_avatar', speakerAvatars.speaker1);
+                    console.log('Uploading avatar for speaker 1:', speakerAvatars.speaker1.name);
+                }
+                if (speakerAvatars.speaker2) {
+                    formData.append('speaker2_avatar', speakerAvatars.speaker2);
+                    console.log('Uploading avatar for speaker 2:', speakerAvatars.speaker2.name);
+                }
+                
+                // Pass preview audio path and job ID to reuse it (saves API calls!)
+                if (previewAudioPath && previewJobId) {
+                    formData.append('preview_audio_path', previewAudioPath);
+                    formData.append('preview_job_id', previewJobId);
+                    console.log('Reusing preview audio:', previewAudioPath);
+                    console.log('Reusing preview job ID:', previewJobId);
+                }
+
+                const response = await fetch('/api/generate-video-script', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    resultMessage.innerHTML = `
+                        <div class="success-message">
+                            ✅ Video generated successfully!<br>
+                            <a href="${data.download_url}" download style="color: #667eea; text-decoration: underline;">Download Video</a>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.message || 'Failed to generate video');
+                }
+
+            } catch (error) {
+                resultMessage.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🎬 Generate Video';
+            }
+        });
+    </script>
+</body>
+</html>
+

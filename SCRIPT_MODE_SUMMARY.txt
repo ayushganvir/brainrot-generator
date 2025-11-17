@@ -1,0 +1,253 @@
+🎭 SCRIPT MODE IMPLEMENTATION - SUMMARY
+
+=================================================================
+✅ YOUR REQUIREMENTS - ALL IMPLEMENTED!
+=================================================================
+
+1. ✓ Disable DALL-E image generation
+2. ✓ Custom script input (not AI-generated topic)
+3. ✓ Support for 2-speaker dialogue format
+4. ✓ ElevenLabs integration for audio
+5. ✓ API to get all ElevenLabs voices
+6. ✓ Voice assignment per speaker
+7. ✓ Audio preview before video generation
+8. ✓ New UI for script mode
+9. ✓ Linear display of dialogue
+10. ✓ No OpenAI audio (uses ElevenLabs only)
+
+=================================================================
+🎯 TWO MODES NOW AVAILABLE
+=================================================================
+
+TOPIC MODE (Original)
+  URL: http://localhost:8000/
+  - AI generates script from topic
+  - OpenAI TTS
+  - DALL-E images
+  - Single narrator
+
+SCRIPT MODE (NEW!)
+  URL: http://localhost:8000/script
+  - You provide dialogue script
+  - ElevenLabs voices (2 speakers)
+  - NO images
+  - Audio preview
+
+=================================================================
+📝 SCRIPT FORMAT (EXACTLY AS YOU REQUESTED)
+=================================================================
+
+Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.
+
+Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning.
+
+Peter: Heh, yeah, and it even helps me write emails.
+
+Stewie: A noble application of advanced AI.
+
+Requirements:
+  - Exactly 2 speakers
+  - Format: SpeakerName: Text
+  - One line per dialogue segment
+
+=================================================================
+🎤 ELEVENLABS FEATURES
+=================================================================
+
+1. GET ALL VOICES
+   Endpoint: GET /api/voices/elevenlabs
+   Returns: All voices from your ElevenLabs account
+
+2. SELECT VOICE PER SPEAKER
+   UI dropdown for each speaker
+   Choose from all available voices
+
+3. PREVIEW AUDIO
+   Endpoint: POST /api/preview-audio
+   Generates full dialogue
+   Plays in browser before video generation
+
+4. GENERATE VIDEO WITH VOICES
+   Endpoint: POST /api/generate-video-script
+   Uses selected voices
+   Concatenates audio segments
+   Creates final video
+
+=================================================================
+📁 NEW FILES CREATED
+=================================================================
+
+1. script_parser.py
+   - Parses dialogue scripts
+   - Extracts speakers
+   - Validates 2-speaker requirement
+
+2. elevenlabs_utils.py
+   - get_available_voices()
+   - generate_audio_elevenlabs()
+   - generate_dialogue_audio()
+   - concatenate_audio_segments()
+
+3. static/script_mode.html
+   - New UI for script mode
+   - Script input textarea
+   - Voice selection dropdowns
+   - Audio preview player
+   - Dialogue preview
+
+4. SCRIPT_MODE_GUIDE.md
+   - Complete documentation
+   - Usage instructions
+   - Examples
+   - Troubleshooting
+
+=================================================================
+🔧 API ENDPOINTS ADDED
+=================================================================
+
+GET /script
+  → Serves script mode UI
+
+GET /api/voices/elevenlabs
+  → Returns all ElevenLabs voices
+
+POST /api/parse-script
+  → Parses script, extracts speakers
+
+POST /api/preview-audio
+  → Generates preview audio
+
+POST /api/generate-video-script
+  → Generates final video with script
+
+=================================================================
+💾 DEPENDENCIES
+=================================================================
+
+Uses MoviePy (already installed) for audio concatenation
+No additional dependencies needed!
+
+All requirements already satisfied by:
+  pip install -r mediachain/requirements.txt
+
+=================================================================
+🚀 HOW TO USE
+=================================================================
+
+1. ADD ELEVENLABS API KEY
+   echo "ELEVENLABS_API_KEY=your_key" >> .env
+
+2. RESTART SERVER
+   python app.py
+
+3. OPEN SCRIPT MODE
+   http://localhost:8000/script
+
+4. FOLLOW THE WORKFLOW:
+   Step 1: Upload video
+   Step 2: Paste your script
+   Step 3: Click "Parse Script & Load Voices"
+   Step 4: Assign voice to each speaker
+   Step 5: Click "Preview Audio" (optional)
+   Step 6: Listen to preview
+   Step 7: Click "Generate Video"
+   Step 8: Download your video!
+
+=================================================================
+🎨 UI FEATURES
+=================================================================
+
+✓ Script format example shown
+✓ Parse script button
+✓ Automatic speaker detection
+✓ Voice dropdown per speaker
+✓ Dialogue preview (linear display)
+✓ Audio preview player
+✓ Generate video button
+✓ Mode switcher (Topic ↔ Script)
+
+=================================================================
+⚡ KEY DIFFERENCES FROM TOPIC MODE
+=================================================================
+
+Script Mode:
+  ✓ You write the script
+  ✓ ElevenLabs voices only
+  ✓ 2 speakers with different voices
+  ✓ Audio preview available
+  ✓ NO image generation (disabled)
+  ✓ NO OpenAI TTS
+  ✓ Faster (no DALL-E)
+
+Topic Mode:
+  • AI generates script
+  • OpenAI TTS
+  • DALL-E images
+  • Single narrator
+  • Topic input
+
+=================================================================
+📊 TECHNICAL FLOW
+=================================================================
+
+Script Mode Flow:
+  1. User uploads video
+  2. User pastes dialogue script
+  3. Parse script → extract 2 speakers
+  4. Fetch ElevenLabs voices from API
+  5. User assigns voice to each speaker
+  6. [Optional] Preview audio
+     - Generate audio per speaker
+     - Concatenate segments
+     - Play in browser
+  7. Generate video
+     - Generate audio with ElevenLabs
+     - Concatenate all dialogue
+     - Generate captions (Whisper)
+     - Compose with background video
+     - Render final video (9:16)
+  8. Download MP4
+
+=================================================================
+🔐 ENVIRONMENT VARIABLES NEEDED
+=================================================================
+
+Required:
+  ELEVENLABS_API_KEY=your_elevenlabs_key
+  OPENAI_API_KEY=your_openai_key (for captions)
+
+Optional:
+  (Other keys from before)
+
+=================================================================
+🎯 USE CASES
+=================================================================
+
+Perfect for:
+  • Character dialogues (Peter & Stewie)
+  • Comedy sketches
+  • Educational debates
+  • Podcast clips → video
+  • Brand conversations
+  • Q&A format content
+  • Any 2-person dialogue!
+
+=================================================================
+📖 DOCUMENTATION
+=================================================================
+
+Read:
+  SCRIPT_MODE_GUIDE.md - Complete guide
+  README.md - Updated with script mode info
+
+Quick Test:
+  1. Visit http://localhost:8000/script
+  2. Upload any video
+  3. Paste the Peter/Stewie example
+  4. Parse → Select voices → Preview → Generate!
+
+=================================================================
+
+ALL YOUR REQUIREMENTS IMPLEMENTED! 🎉
+
+Try it: http://localhost:8000/script
