@@ -92,6 +92,18 @@ python app.py
 
 ---
 
+## 📸 Screenshots
+
+### Main Application
+![App Interface](app-showcase.png)
+*Web interface for script parsing, voice assignment, and video generation*
+
+### Chrome Extension
+![Extension Side Panel](ext-showcase.png)
+*Side panel UI for drag-to-select image capture from any webpage*
+
+---
+
 ## 🎯 How to Use
 
 ### Step 1: Write Your Script
