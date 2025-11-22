@@ -47,8 +47,8 @@ def parse_dialogue_script(script: str) -> Tuple[List[Dict], List[str]]:
 
 
 def validate_two_speakers(speakers: List[str]) -> bool:
-    """Validate that there are exactly 2 speakers."""
-    return len(speakers) == 2
+    """Validate that there are 1 or 2 speakers."""
+    return 1 <= len(speakers) <= 2
 
 
 def combine_dialogue_for_speaker(dialogue: List[Dict], speaker: str) -> str:

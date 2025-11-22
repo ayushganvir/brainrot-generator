@@ -1,4 +1,5 @@
 from moviepy.editor import TextClip, CompositeVideoClip
+from moviepy.config import get_setting, change_settings
 import pysrt
 import logging
 import os
@@ -31,7 +32,34 @@ class VideoCaptioner:
 
         # Create the main text with Helvetica font, smaller size, and yellow outline
         # Reduce font size by 25% (multiply by 0.825 instead of 1.1)
-        text_clip = TextClip(txt, fontsize=fontsize*0.825, font='Helvetica', color=color, size=(width*0.8, None), method='caption', stroke_color='yellow', stroke_width=fontsize/12)
+        
+        # Ensure font is not None
+        # User requested non-italic, better typography. 'Arial-Bold' is a safe bet for clear captions.
+        # If font is passed as 'Helvetica', we override it to 'Arial-Bold' for better look, 
+        # or just use what's passed if it's a specific path.
+        if not font or font == 'Helvetica':
+            use_font = 'Arial-Bold' 
+        else:
+            use_font = font
+            
+        # User requested: "yellow inside and small black border"
+        text_color = 'yellow'
+        stroke_color = 'black'
+        stroke_width = fontsize / 25  # Smaller border (was /12)
+        
+        # Debug logging
+        # logging.info(f"Creating TextClip: txt='{txt}', font='{use_font}', color='{text_color}'")
+        
+        text_clip = TextClip(
+            txt, 
+            fontsize=fontsize*1.625, 
+            font=use_font, 
+            color=text_color, 
+            size=(width*1.65, None), 
+            method='caption', 
+            stroke_color=stroke_color, 
+            stroke_width=stroke_width
+        )
         
         # Composite all layers
         #return CompositeVideoClip([blur_clip, shadow_clip, text_clip])
@@ -47,6 +75,33 @@ class VideoCaptioner:
                                    width=540
                                    ):
         font = self.get_font_path(font) if font else self.default_font
+        
+        # Fallback if default font is also None
+        if not font:
+            font = 'Helvetica'
+            
+        # Check ImageMagick binary
+        try:
+            im_binary = get_setting("IMAGEMAGICK_BINARY")
+            logging.info(f"IMAGEMAGICK_BINARY: {im_binary}")
+            
+            if not im_binary or im_binary == 'auto-detect':
+                # Try to find it manually
+                possible_paths = [
+                    "/opt/homebrew/bin/magick",
+                    "/opt/homebrew/bin/convert",
+                    "/usr/local/bin/magick",
+                    "/usr/local/bin/convert",
+                    "/usr/bin/convert"
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        logging.info(f"Found ImageMagick at {path}, configuring...")
+                        change_settings({"IMAGEMAGICK_BINARY": path})
+                        break
+        except Exception as e:
+            logging.warning(f"Could not configure IMAGEMAGICK_BINARY: {e}")
+
         try:
             subtitles = subtitles_path
             subtitle_clips = []

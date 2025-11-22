@@ -11,12 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import shutil
 from pathlib import Path
 import uuid
+from datetime import datetime
+from pydantic import BaseModel
 
 # Add mediachain to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'mediachain'))
 
 from mediachain.examples.moviepy_engine.reddit_stories.generate_reddit_story import RedditStoryGenerator
 from script_parser import parse_dialogue_script, validate_two_speakers
+from instagram_manager import InstagramManager
 from elevenlabs_utils import get_available_voices, generate_dialogue_audio, concatenate_audio_segments
 
 # Configure logging
@@ -29,6 +32,9 @@ app = FastAPI(
     description="Generate AI-powered Reddit story videos with custom backgrounds",
     version="1.0.0"
 )
+
+# Initialize Instagram Manager
+instagram_manager = InstagramManager()
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -45,11 +51,22 @@ OUTPUT_DIR = Path("outputs")
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+# Configuration
+AVATAR_SIZE = 700  # Fixed height in pixels for speaker avatars
+DEFAULT_VIDEOS_DIR = Path("default_videos")  # Directory containing default background videos
+
 # Mount static files (for serving the frontend)
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+
+# Public URL for Instagram to access videos (e.g., ngrok url)
+PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
 
 # Store processing status
 processing_status = {}
+
+# Store extension session data (dialogue + images)
+extension_sessions = {}
 
 
 def add_dialogue_images_to_video(
@@ -191,7 +208,8 @@ def add_speaker_avatars_to_video(
     previous_speaker = None
     
     # Fixed positioning constants
-    AVATAR_SIZE = 120  # Fixed height in pixels
+    # AVATAR_SIZE is defined globally
+    logger.info(f"[AVATAR] Using AVATAR_SIZE: {AVATAR_SIZE}")
     MARGIN = 20  # Margin from edges
     BOTTOM_OFFSET = 100  # Distance from bottom
     
@@ -247,11 +265,14 @@ def add_speaker_avatars_to_video(
             previous_speaker = speaker
             continue
         
-        if speaker_index == 0:
-            # Speaker 1: Bottom left
+        if len(speakers_list) == 1:
+            # Single speaker: Center bottom
+            position = ('center', video_clip.h - AVATAR_SIZE - BOTTOM_OFFSET)
+        elif speaker_index == 0:
+            # Speaker 1 (of 2): Bottom left
             position = (MARGIN, video_clip.h - AVATAR_SIZE - BOTTOM_OFFSET)
         else:
-            # Speaker 2: Bottom right
+            # Speaker 2 (of 2): Bottom right
             position = (video_clip.w - AVATAR_SIZE - MARGIN, 
                        video_clip.h - AVATAR_SIZE - BOTTOM_OFFSET)
         
@@ -510,7 +531,7 @@ async def parse_script(script: str = Form(...)):
         if not validate_two_speakers(speakers):
             return JSONResponse({
                 "status": "error",
-                "message": f"Script must have exactly 2 speakers. Found: {len(speakers)}"
+                "message": f"Script must have 1 or 2 speakers. Found: {len(speakers)}"
             }, status_code=400)
         
         logger.info(f"[PARSE] ✓ Parsed {len(dialogue)} dialogue segments")
@@ -543,7 +564,7 @@ async def preview_audio(
         dialogue, speakers = parse_dialogue_script(script)
         
         if not validate_two_speakers(speakers):
-            raise HTTPException(status_code=400, detail="Script must have exactly 2 speakers")
+            raise HTTPException(status_code=400, detail="Script must have 1 or 2 speakers")
         
         # Get API key
         elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
@@ -552,9 +573,10 @@ async def preview_audio(
         
         # Map voices
         voice_mapping = {
-            speakers[0]: speaker1_voice,
-            speakers[1]: speaker2_voice
+            speakers[0]: speaker1_voice
         }
+        if len(speakers) > 1:
+            voice_mapping[speakers[1]] = speaker2_voice
         
         logger.info(f"[PREVIEW {job_id}] Voice mapping: {voice_mapping}")
         
@@ -602,10 +624,10 @@ async def preview_audio(
 
 @app.post("/api/generate-video-script")
 async def generate_video_script_mode(
-    video: UploadFile = File(...),
     script: str = Form(...),
     speaker1_voice: str = Form(...),
     speaker2_voice: str = Form(...),
+    video: UploadFile = File(None),  # Make video optional
     loop_if_short: bool = Form(True),
     font_color: str = Form('white'),
     shadow_color: str = Form('black'),
@@ -620,10 +642,10 @@ async def generate_video_script_mode(
     Generate video using custom script with ElevenLabs voices
     
     Args:
-        video: Uploaded video file
         script: Dialogue script with speakers
         speaker1_voice: ElevenLabs voice ID for speaker 1
         speaker2_voice: ElevenLabs voice ID for speaker 2
+        video: Uploaded video file (optional - will use random default if not provided)
         loop_if_short: Auto-loop if video is short
         font_color: Caption text color
         shadow_color: Caption shadow color
@@ -639,26 +661,43 @@ async def generate_video_script_mode(
     logger.info("="*80)
     
     try:
-        # Validate file
-        logger.info(f"[JOB {job_id}] Validating uploaded file: {video.filename}")
-        if not video.filename.endswith(('.mp4', '.mov', '.avi', '.mkv')):
-            logger.error(f"[JOB {job_id}] Invalid file format")
-            raise HTTPException(status_code=400, detail="Invalid video format")
-        
-        # Save uploaded video
-        video_filename = f"{job_id}_{video.filename}"
-        video_path = UPLOAD_DIR / video_filename
-        
-        logger.info(f"[JOB {job_id}] Saving video")
-        with video_path.open("wb") as buffer:
-            shutil.copyfileobj(video.file, buffer)
+        # Handle video - either uploaded or random default
+        if video and video.filename:
+            # Validate uploaded file
+            logger.info(f"[JOB {job_id}] Validating uploaded file: {video.filename}")
+            if not video.filename.endswith(('.mp4', '.mov', '.avi', '.mkv')):
+                logger.error(f"[JOB {job_id}] Invalid file format")
+                raise HTTPException(status_code=400, detail="Invalid video format")
+            
+            # Save uploaded video
+            video_filename = f"{job_id}_{video.filename}"
+            video_path = UPLOAD_DIR / video_filename
+            
+            logger.info(f"[JOB {job_id}] Saving uploaded video")
+            with video_path.open("wb") as buffer:
+                shutil.copyfileobj(video.file, buffer)
+        else:
+            # Use random default video
+            import random
+            default_videos = list(DEFAULT_VIDEOS_DIR.glob("*.mp4"))
+            
+            if not default_videos:
+                raise HTTPException(status_code=500, detail="No default videos available")
+            
+            selected_video = random.choice(default_videos)
+            logger.info(f"[JOB {job_id}] No video uploaded, using random default: {selected_video.name}")
+            
+            # Copy to upload dir for processing
+            video_filename = f"{job_id}_{selected_video.name}"
+            video_path = UPLOAD_DIR / video_filename
+            shutil.copy(selected_video, video_path)
         
         # Parse script
         logger.info(f"[JOB {job_id}] Parsing dialogue script")
         dialogue, speakers = parse_dialogue_script(script)
         
         if not validate_two_speakers(speakers):
-            raise HTTPException(status_code=400, detail=f"Script must have exactly 2 speakers. Found: {len(speakers)}")
+            raise HTTPException(status_code=400, detail=f"Script must have 1 or 2 speakers. Found: {len(speakers)}")
         
         logger.info(f"[JOB {job_id}] Speakers: {', '.join(speakers)}")
         logger.info(f"[JOB {job_id}] Dialogue segments: {len(dialogue)}")
@@ -729,9 +768,24 @@ async def generate_video_script_mode(
                     shutil.copyfileobj(speaker2_avatar.file, buffer)
                 
                 speaker_avatars[speakers[1]] = str(avatar2_path)
-                logger.info(f"[JOB {job_id}] Saved avatar for {speakers[1]}: {avatar2_path}")
+                logger.info(f"[JOB {job_id}] Saved avatar for speaker 2 ({speakers[1]}): {avatar2_path}")
             except Exception as e:
-                logger.error(f"[JOB {job_id}] Error saving speaker2 avatar: {e}")
+                logger.error(f"[JOB {job_id}] Error saving speaker 2 avatar: {e}")
+
+        # Default avatars for Peter and Stewie if not provided
+        for speaker in speakers:
+            if speaker not in speaker_avatars:
+                speaker_lower = speaker.lower()
+                default_avatar_path = None
+                
+                if "peter" in speaker_lower:
+                    default_avatar_path = "/Users/ayushganvir/Documents/code/content_gen/Peter_Griffin.png"
+                elif "stewie" in speaker_lower:
+                    default_avatar_path = "/Users/ayushganvir/Documents/code/content_gen/Stewie_Griffin.png"
+                
+                if default_avatar_path and os.path.exists(default_avatar_path):
+                    speaker_avatars[speaker] = default_avatar_path
+                    logger.info(f"[JOB {job_id}] Using default avatar for {speaker}: {default_avatar_path}")
         
         if speaker_avatars:
             logger.info(f"[JOB {job_id}] ✓ Processed {len(speaker_avatars)} speaker avatars")
@@ -743,9 +797,10 @@ async def generate_video_script_mode(
         
         # Map voices
         voice_mapping = {
-            speakers[0]: speaker1_voice,
-            speakers[1]: speaker2_voice
+            speakers[0]: speaker1_voice
         }
+        if len(speakers) > 1:
+            voice_mapping[speakers[1]] = speaker2_voice
         
         logger.info(f"[JOB {job_id}] Voice mapping: {voice_mapping}")
         
@@ -935,6 +990,205 @@ async def generate_video_script_mode(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+# Instagram API Routes
+class InstagramAuthRequest(BaseModel):
+    username: str
+    access_token: str
+    account_id: str
+
+class InstagramUploadRequest(BaseModel):
+    account_id: str
+    job_id: str
+    caption: str
+    cleanup: bool = False
+
+
+@app.get("/instagram")
+async def instagram_dashboard():
+    """Serve the Instagram dashboard page"""
+    return FileResponse("static/instagram.html")
+
+@app.post("/api/instagram/auth")
+async def link_instagram_account(data: InstagramAuthRequest):
+    """Link an Instagram account"""
+    try:
+        instagram_manager.add_account(data.access_token, data.account_id, data.username)
+        return JSONResponse({"status": "success"})
+    except Exception as e:
+        logger.error(f"[INSTAGRAM] Error linking account: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/instagram/accounts")
+async def get_instagram_accounts():
+    """Get linked Instagram accounts"""
+    return JSONResponse(instagram_manager.get_accounts())
+
+@app.delete("/api/instagram/accounts/{account_id}")
+async def remove_instagram_account(account_id: str):
+    """Remove an Instagram account"""
+    if instagram_manager.remove_account(account_id):
+        return JSONResponse({"status": "success"})
+    raise HTTPException(status_code=404, detail="Account not found")
+
+@app.post("/api/instagram/upload")
+async def upload_to_instagram(data: InstagramUploadRequest):
+    """Upload a generated video to Instagram"""
+    try:
+        # Find the video file
+        # We need to find where the video is stored based on job_id
+        # Assuming standard naming convention or checking output dirs
+        video_filename = f"reddit_story_{data.job_id}.mp4" # Standard output name
+        
+        # Search for the file
+        video_path = None
+        possible_paths = [
+            OUTPUT_DIR / video_filename,
+            Path("outputs") / video_filename,
+            Path(f"/tmp/final_video_{data.job_id}.mp4") # Sometimes stored here
+        ]
+        
+        # Also check if we can find it via download logic
+        for path in possible_paths:
+            if path.exists():
+                video_path = path
+                break
+        
+        if not video_path:
+             # Fallback: try to find any file with job_id in outputs
+             for file in OUTPUT_DIR.glob(f"*{data.job_id}*.mp4"):
+                 video_path = file
+                 break
+
+        if not video_path:
+            raise HTTPException(status_code=404, detail="Video file not found for this job")
+
+        # Upload
+        # Construct public URL
+        video_filename = video_path.name
+        video_url = f"{PUBLIC_URL}/outputs/{video_filename}"
+        
+        logger.info(f"[INSTAGRAM] Uploading video from URL: {video_url}")
+        
+        result = instagram_manager.upload_video(data.account_id, video_url, data.caption)
+        
+        # Cleanup if requested
+        if data.cleanup:
+            logger.info(f"[CLEANUP] Cleaning up files for job {data.job_id}")
+            # Delete video
+            try:
+                os.remove(video_path)
+            except Exception as e:
+                logger.warning(f"Failed to delete video: {e}")
+            
+            # Delete intermediate files
+            # (This is a basic cleanup, could be more thorough)
+            shutil.rmtree(f"/tmp/elevenlabs_audio", ignore_errors=True)
+            
+            # Remove from processing status
+            if data.job_id in processing_status:
+                del processing_status[data.job_id]
+
+        return JSONResponse({"status": "success", "result": result})
+
+    except Exception as e:
+        logger.error(f"[INSTAGRAM] Error uploading: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/instagram/history")
+async def get_upload_history():
+    """Get upload history"""
+    return JSONResponse(instagram_manager.get_history())
+
+
+# ============================================================================
+# EXTENSION API ENDPOINTS
+# ============================================================================
+
+class ExtensionSessionData(BaseModel):
+    session_id: str
+    dialogue: list
+    speakers: list
+
+class ExtensionImageUpload(BaseModel):
+    session_id: str
+    dialogue_index: int
+    image_data: str  # base64 encoded
+
+@app.post("/api/extension/create-session")
+async def create_extension_session(data: ExtensionSessionData):
+    """Create a new extension session with parsed dialogue"""
+    try:
+        extension_sessions[data.session_id] = {
+            "dialogue": data.dialogue,
+            "speakers": data.speakers,
+            "images": {},
+            "timestamp": datetime.now().isoformat()
+        }
+        logger.info(f"[EXTENSION] Created session {data.session_id} with {len(data.dialogue)} dialogues")
+        return JSONResponse({"status": "success", "session_id": data.session_id})
+    except Exception as e:
+        logger.error(f"[EXTENSION] Error creating session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/extension/session/{session_id}")
+async def get_extension_session(session_id: str):
+    """Get extension session data"""
+    if session_id not in extension_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return JSONResponse(extension_sessions[session_id])
+
+@app.post("/api/extension/upload-image")
+async def upload_extension_image(data: ExtensionImageUpload):
+    """Upload image for a specific dialogue"""
+    try:
+        if data.session_id not in extension_sessions:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Store base64 image data
+        extension_sessions[data.session_id]["images"][str(data.dialogue_index)] = data.image_data
+        
+        logger.info(f"[EXTENSION] Uploaded image for dialogue {data.dialogue_index} in session {data.session_id}")
+        
+        return JSONResponse({
+            "status": "success",
+            "dialogue_index": data.dialogue_index,
+            "total_images": len(extension_sessions[data.session_id]["images"])
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[EXTENSION] Error uploading image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/extension/image/{session_id}/{dialogue_index}")
+async def delete_extension_image(session_id: str, dialogue_index: int):
+    """Delete image for a specific dialogue"""
+    try:
+        if session_id not in extension_sessions:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        images = extension_sessions[session_id]["images"]
+        if str(dialogue_index) in images:
+            del images[str(dialogue_index)]
+            logger.info(f"[EXTENSION] Deleted image for dialogue {dialogue_index}")
+        
+        return JSONResponse({"status": "success"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[EXTENSION] Error deleting image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/extension/images/{session_id}")
+async def get_extension_images(session_id: str):
+    """Get all images for a session"""
+    if session_id not in extension_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return JSONResponse(extension_sessions[session_id].get("images", {}))
+
+
 if __name__ == "__main__":
     import uvicorn
     
@@ -951,4 +1205,6 @@ if __name__ == "__main__":
     print("\nPress Ctrl+C to stop the server\n")
     
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+
+
 

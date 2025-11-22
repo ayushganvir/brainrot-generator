@@ -1,0 +1,45 @@
+{
+    "manifest_version": 3,
+    "name": "ContentGen Image Selector",
+    "version": "1.0.0",
+    "description": "Capture and select images from web pages for dialogue-based video generation",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "scripting",
+        "sidePanel",
+        "cookies",
+        "tabs"
+    ],
+    "host_permissions": [
+        "<all_urls>",
+        "http://localhost:8000/*"
+    ],
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    "action": {
+        "default_title": "Open ContentGen Image Selector"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "css": [
+                "content.css"
+            ]
+        }
+    ],
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}

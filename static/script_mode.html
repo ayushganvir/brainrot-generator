@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -181,29 +182,29 @@
             background: #f9f9f9;
             border-radius: 8px;
         }
-        
+
         .speaker-config-row {
             display: grid;
             grid-template-columns: 1fr 2fr;
             gap: 20px;
             align-items: center;
         }
-        
+
         .speaker-avatar-upload {
             margin-top: 5px;
         }
-        
+
         .speaker-avatar-upload label {
             display: block;
             font-size: 13px;
             margin-bottom: 5px;
             color: #555;
         }
-        
+
         .speaker-avatar-input {
             display: none;
         }
-        
+
         .avatar-upload-label {
             display: inline-block;
             padding: 8px 15px;
@@ -214,17 +215,17 @@
             font-size: 13px;
             transition: all 0.2s;
         }
-        
+
         .avatar-upload-label:hover {
             background: #667eea;
             color: white;
         }
-        
+
         .speaker-avatar-preview {
             margin-top: 8px;
             display: inline-block;
         }
-        
+
         .speaker-avatar-preview img {
             width: 60px;
             height: 60px;
@@ -233,7 +234,7 @@
             border-radius: 4px;
             display: block;
         }
-        
+
         .speaker-avatar-preview .remove-avatar {
             margin-top: 5px;
             padding: 3px 10px;
@@ -244,7 +245,7 @@
             cursor: pointer;
             font-size: 11px;
         }
-        
+
         .speaker-avatar-preview .remove-avatar:hover {
             background: #d32f2f;
         }
@@ -319,7 +320,7 @@
             max-width: 200px;
             max-height: 150px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .image-preview .remove-image {
@@ -406,14 +407,18 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .hidden {
             display: none;
         }
     </style>
+    <script src="/static/navbar.js"></script>
 </head>
+
 <body>
     <div class="container">
         <div style="text-align: right; margin-bottom: 10px;">
@@ -425,21 +430,21 @@
         <p class="subtitle">Create videos with dialogue between two speakers using ElevenLabs voices</p>
 
         <div class="info-box">
-            <strong>📝 Script Format:</strong> Write dialogue with two speakers in this format:<br>
+            <strong>📝 Script Format:</strong> Write dialogue with one or two speakers in this format:<br>
             <code>SpeakerName: Their dialogue here</code>
         </div>
 
         <div class="script-example">Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.
-Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning.</div>
+            Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning.</div>
 
         <form id="videoForm">
             <!-- Step 1: Upload Video -->
             <div class="form-group">
-                <label for="video">1. Upload Background Video</label>
+                <label for="video">1. Upload Background Video (Optional - Random default will be used)</label>
                 <div class="file-upload">
                     <input type="file" id="video" class="file-upload-input" accept="video/*">
                     <label for="video" class="file-upload-label" id="fileLabel">
-                        📁 Click to upload video (MP4, MOV, AVI, MKV)
+                        📁 Click to upload video (MP4, MOV, AVI, MKV) or leave empty for random default
                     </label>
                     <div id="fileName" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
                 </div>
@@ -447,12 +452,9 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
 
             <!-- Step 2: Enter Script -->
             <div class="form-group">
-                <label for="script">2. Enter Your Dialogue Script (2 speakers required)</label>
-                <textarea 
-                    id="script" 
-                    name="script" 
-                    placeholder="Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.&#10;Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning."
-                ></textarea>
+                <label for="script">2. Enter Your Dialogue Script</label>
+                <textarea id="script" name="script"
+                    placeholder="Peter: Y'know, Stewie, OpenAI is kinda like having a genius buddy who never sleeps.&#10;Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reasoning."></textarea>
                 <button type="button" class="btn btn-secondary" id="parseBtn" style="margin-top: 10px;">
                     Parse Script & Load Voices
                 </button>
@@ -462,7 +464,7 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
             <div class="speakers-section" id="speakersSection">
                 <h3>3. Assign Voices to Speakers</h3>
                 <div id="voiceAssignments"></div>
-                
+
                 <div class="dialogue-preview">
                     <strong>Dialogue Preview:</strong>
                     <div id="dialoguePreview"></div>
@@ -490,9 +492,50 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
 
             <!-- Step 5: Generate -->
             <button type="submit" class="btn" id="submitBtn" disabled>
-                🎬 Generate Video (Preview audio first)
+                🎬 Generate Video
             </button>
         </form>
+
+        <div id="resultSection" style="display: none; margin-top: 30px;">
+            <h3>🎉 Video Generated!</h3>
+
+            <div style="margin: 20px 0; background: black; border-radius: 10px; overflow: hidden;">
+                <video id="videoPlayer" controls style="width: 100%; max-height: 500px; display: block;"></video>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchResultTab('download')">Download</button>
+                <button class="tab" onclick="switchResultTab('instagram')">Upload to Instagram</button>
+            </div>
+
+            <div id="downloadTab">
+                <a id="downloadLink" href="#" class="btn" download>
+                    ⬇️ Download Video
+                </a>
+            </div>
+
+            <div id="instagramTab" style="display: none;">
+                <div class="form-group">
+                    <label>Select Account</label>
+                    <select id="igAccountSelect">
+                        <option value="">Loading accounts...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Caption</label>
+                    <textarea id="igCaption" style="min-height: 100px;"
+                        placeholder="Check out this AI generated video! #AI #RedditStories"></textarea>
+                </div>
+                <div class="checkbox-group" style="margin-bottom: 20px;">
+                    <input type="checkbox" id="cleanupToggle">
+                    <label for="cleanupToggle" style="margin-bottom: 0;">🗑️ Cleanup files after upload</label>
+                </div>
+                <button id="igUploadBtn" class="btn"
+                    style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);">
+                    <i class="fab fa-instagram"></i> Upload to Instagram
+                </button>
+            </div>
+        </div>
 
         <div id="resultMessage" style="margin-top: 20px;"></div>
     </div>
@@ -505,10 +548,8 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
         let previewAudioPath = null; // Store preview audio path for reuse
         let previewJobId = null; // Store preview job ID for segment data reuse
         let dialogueImages = {}; // Maps dialogue index to File object
-        let speakerAvatars = {
-            speaker1: null,  // File object for speaker 1
-            speaker2: null   // File object for speaker 2
-        };
+        let speakerAvatars = {}; // Maps speaker name to File object
+        let currentJobId = null; // Store current job ID for Instagram upload
 
         const videoInput = document.getElementById('video');
         const fileLabel = document.getElementById('fileLabel');
@@ -522,6 +563,89 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
         const audioElement = document.getElementById('audioElement');
         const submitBtn = document.getElementById('submitBtn');
         const resultMessage = document.getElementById('resultMessage');
+        const resultSection = document.getElementById('resultSection');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const downloadLink = document.getElementById('downloadLink');
+        const igAccountSelect = document.getElementById('igAccountSelect');
+        const igUploadBtn = document.getElementById('igUploadBtn');
+
+        // Tab switching logic
+        window.switchResultTab = (tabName) => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchResultTab('${tabName}')"]`).classList.add('active');
+
+            document.getElementById('downloadTab').style.display = tabName === 'download' ? 'block' : 'none';
+            document.getElementById('instagramTab').style.display = tabName === 'instagram' ? 'block' : 'none';
+
+            if (tabName === 'instagram') {
+                loadInstagramAccounts();
+            }
+        };
+
+        // Load Instagram accounts
+        async function loadInstagramAccounts() {
+            try {
+                const response = await fetch('/api/instagram/accounts');
+                const accounts = await response.json();
+
+                if (accounts.length === 0) {
+                    igAccountSelect.innerHTML = '<option value="">No accounts linked. Go to Manager.</option>';
+                    return;
+                }
+
+                igAccountSelect.innerHTML = '<option value="">Select an account...</option>' +
+                    accounts.map(acc => `<option value="${acc.id}">@${acc.username}</option>`).join('');
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                igAccountSelect.innerHTML = '<option value="">Error loading accounts</option>';
+            }
+        }
+
+        // Upload to Instagram
+        igUploadBtn.addEventListener('click', async () => {
+            const accountId = igAccountSelect.value;
+            const caption = document.getElementById('igCaption').value;
+            const cleanup = document.getElementById('cleanupToggle').checked;
+
+            if (!accountId) {
+                alert('Please select an Instagram account');
+                return;
+            }
+
+            igUploadBtn.disabled = true;
+            igUploadBtn.innerHTML = '<span class="loading"></span> Uploading...';
+
+            try {
+                const response = await fetch('/api/instagram/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        account_id: accountId,
+                        job_id: currentJobId,
+                        caption: caption,
+                        cleanup: cleanup
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert('✅ Video uploaded successfully!');
+                    if (cleanup) {
+                        alert('Files cleaned up.');
+                        videoPlayer.src = ''; // Clear player
+                        resultSection.style.display = 'none'; // Hide result
+                    }
+                } else {
+                    throw new Error(data.detail || 'Upload failed');
+                }
+            } catch (error) {
+                alert(`❌ Upload failed: ${error.message}`);
+            } finally {
+                igUploadBtn.disabled = false;
+                igUploadBtn.innerHTML = '<i class="fab fa-instagram"></i> Upload to Instagram';
+            }
+        });
 
         // Function to show avatar preview
         function showAvatarPreview(file, previewId, speakerIndex) {
@@ -532,16 +656,12 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                     <img src="${e.target.result}" alt="Avatar">
                     <button class="remove-avatar" data-speaker="${speakerIndex}">Remove</button>
                 `;
-                
+
                 // Add remove listener
                 previewDiv.querySelector('.remove-avatar').addEventListener('click', () => {
-                    if (speakerIndex === 0) {
-                        speakerAvatars.speaker1 = null;
-                        document.getElementById('speaker-avatar-0').value = '';
-                    } else {
-                        speakerAvatars.speaker2 = null;
-                        document.getElementById('speaker-avatar-1').value = '';
-                    }
+                    const speakerName = parsedSpeakers[speakerIndex];
+                    delete speakerAvatars[speakerName];
+                    document.getElementById(`speaker-avatar-${speakerIndex}`).value = '';
                     previewDiv.innerHTML = '';
                 });
             };
@@ -617,14 +737,26 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                 availableVoices = voicesData.voices;
 
                 // Create voice selection dropdowns and avatar uploads
-                voiceAssignments.innerHTML = parsedSpeakers.map((speaker, index) => `
+                voiceAssignments.innerHTML = parsedSpeakers.map((speaker, index) => {
+                    let defaultVoiceId = '';
+                    const speakerLower = speaker.toLowerCase();
+                    // Try to find default voice
+                    if (speakerLower.includes('peter')) {
+                        const voice = availableVoices.find(v => v.name.toLowerCase().includes('peter') || v.voice_id.toLowerCase().includes('peter'));
+                        if (voice) defaultVoiceId = voice.voice_id;
+                    } else if (speakerLower.includes('stewie')) {
+                        const voice = availableVoices.find(v => v.name.toLowerCase().includes('stewie') || v.voice_id.toLowerCase().includes('stewie'));
+                        if (voice) defaultVoiceId = voice.voice_id;
+                    }
+
+                    return `
                     <div class="speaker-config">
                         <div class="speaker-config-row">
                             <div class="speaker-name">${speaker}</div>
                             <select id="voice_${index}" class="voice-select">
                                 <option value="">Select voice...</option>
                                 ${availableVoices.map(v => `
-                                    <option value="${v.voice_id}">${v.name}</option>
+                                    <option value="${v.voice_id}" ${v.voice_id === defaultVoiceId ? 'selected' : ''}>${v.name}</option>
                                 `).join('')}
                             </select>
                         </div>
@@ -641,65 +773,49 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                             <div id="speaker-preview-${index}" class="speaker-avatar-preview"></div>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 speakersSection.classList.add('active');
                 parseBtn.textContent = '✓ Script Parsed Successfully';
-                
-                // Add listeners for speaker avatar uploads
-                document.getElementById('speaker-avatar-0').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        // Validate file type
-                        if (!file.type.startsWith('image/')) {
-                            alert('Please select an image file');
-                            return;
-                        }
-                        // Validate file size (10MB max)
-                        if (file.size > 10 * 1024 * 1024) {
-                            alert('Image too large. Maximum size is 10MB');
-                            return;
-                        }
-                        
-                        speakerAvatars.speaker1 = file;
-                        showAvatarPreview(file, 'speaker-preview-0', 0);
+
+                // Enable generate button (validation happens on click)
+                submitBtn.disabled = false;
+
+                // Add listeners for speaker avatar uploads and voice selection
+                parsedSpeakers.forEach((speaker, index) => {
+                    // Avatar upload listener
+                    const avatarInput = document.getElementById(`speaker-avatar-${index}`);
+                    if (avatarInput) {
+                        avatarInput.addEventListener('change', (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                if (!file.type.startsWith('image/')) {
+                                    alert('Please select an image file');
+                                    return;
+                                }
+                                if (file.size > 10 * 1024 * 1024) {
+                                    alert('Image too large. Maximum size is 10MB');
+                                    return;
+                                }
+
+                                speakerAvatars[speaker] = file;
+                                showAvatarPreview(file, `speaker-preview-${index}`, index);
+                            }
+                        });
                     }
-                });
-                
-                document.getElementById('speaker-avatar-1').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        // Validate file type
-                        if (!file.type.startsWith('image/')) {
-                            alert('Please select an image file');
-                            return;
-                        }
-                        // Validate file size (10MB max)
-                        if (file.size > 10 * 1024 * 1024) {
-                            alert('Image too large. Maximum size is 10MB');
-                            return;
-                        }
-                        
-                        speakerAvatars.speaker2 = file;
-                        showAvatarPreview(file, 'speaker-preview-1', 1);
+
+                    // Voice selection listener
+                    const voiceSelect = document.getElementById(`voice_${index}`);
+                    if (voiceSelect) {
+                        voiceSelect.addEventListener('change', () => {
+                            previewAudioPath = null;
+                            previewJobId = null;
+                            // submitBtn.disabled = true; // Don't disable, just clear preview
+                            // submitBtn.textContent = '🎬 Generate Video (Preview audio first)';
+                            audioPlayer.classList.remove('active');
+                        });
                     }
-                });
-                
-                // Add listeners to voice dropdowns to invalidate preview when changed
-                document.getElementById('voice_0').addEventListener('change', () => {
-                    previewAudioPath = null;
-                    previewJobId = null;
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = '🎬 Generate Video (Preview audio first)';
-                    audioPlayer.classList.remove('active');
-                });
-                
-                document.getElementById('voice_1').addEventListener('change', () => {
-                    previewAudioPath = null;
-                    previewJobId = null;
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = '🎬 Generate Video (Preview audio first)';
-                    audioPlayer.classList.remove('active');
                 });
 
                 // Add listeners for image uploads
@@ -707,7 +823,7 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                     const fileInput = document.getElementById(`dialogue-image-${index}`);
                     const label = document.querySelector(`label[for="dialogue-image-${index}"]`);
                     const previewDiv = document.getElementById(`preview-${index}`);
-                    
+
                     if (fileInput) {
                         // Handle file selection
                         fileInput.addEventListener('change', (e) => {
@@ -718,16 +834,16 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                                     alert('Please select an image file');
                                     return;
                                 }
-                                
+
                                 // Validate file size (10MB max)
                                 if (file.size > 10 * 1024 * 1024) {
                                     alert('Image too large. Maximum size is 10MB');
                                     return;
                                 }
-                                
+
                                 // Store file
                                 dialogueImages[index] = file;
-                                
+
                                 // Show preview
                                 const reader = new FileReader();
                                 reader.onload = (ev) => {
@@ -735,7 +851,7 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                                         <img src="${ev.target.result}" alt="Preview">
                                         <button class="remove-image" data-index="${index}">Remove</button>
                                     `;
-                                    
+
                                     // Add remove listener
                                     previewDiv.querySelector('.remove-image').addEventListener('click', () => {
                                         delete dialogueImages[index];
@@ -746,21 +862,21 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                                 reader.readAsDataURL(file);
                             }
                         });
-                        
+
                         // Handle drag and drop
                         label.addEventListener('dragover', (e) => {
                             e.preventDefault();
                             label.classList.add('drag-over');
                         });
-                        
+
                         label.addEventListener('dragleave', () => {
                             label.classList.remove('drag-over');
                         });
-                        
+
                         label.addEventListener('drop', (e) => {
                             e.preventDefault();
                             label.classList.remove('drag-over');
-                            
+
                             const file = e.dataTransfer.files[0];
                             if (file && file.type.startsWith('image/')) {
                                 fileInput.files = e.dataTransfer.files;
@@ -772,6 +888,49 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                     }
                 });
 
+                // CREATE EXTENSION SESSION
+                const sessionId = 'session_' + Date.now();
+                try {
+                    await fetch('/api/extension/create-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                            dialogue: parsedDialogue,
+                            speakers: parsedSpeakers
+                        })
+                    });
+
+                    // Store session ID in localStorage for extension
+                    localStorage.setItem('sessionId', sessionId);
+
+                    // Also store in a way extension can access
+                    window.sessionId = sessionId;
+
+                    // Dispatch custom event for extension
+                    window.dispatchEvent(new CustomEvent('contentgen-session-created', {
+                        detail: { sessionId }
+                    }));
+
+                    // Show extension button
+                    const extensionBtn = document.createElement('button');
+                    extensionBtn.type = 'button';
+                    extensionBtn.className = 'btn btn-secondary';
+                    extensionBtn.style.marginTop = '10px';
+                    extensionBtn.innerHTML = '🖼️ Open Extension to Select Images';
+                    extensionBtn.addEventListener('click', () => {
+                        alert('Please click the ContentGen extension icon in your Chrome toolbar to select images from web pages!');
+                    });
+
+                    // Insert after parse button
+                    parseBtn.parentNode.insertBefore(extensionBtn, parseBtn.nextSibling);
+
+                    // Start polling for extension images
+                    startExtensionPolling(sessionId);
+                } catch (error) {
+                    console.error('Error creating extension session:', error);
+                }
+
             } catch (error) {
                 alert(`Error: ${error.message}`);
                 parseBtn.textContent = 'Parse Script & Load Voices';
@@ -780,14 +939,58 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
             }
         });
 
+        // Poll for extension images
+        let extensionPollingInterval;
+        function startExtensionPolling(sessionId) {
+            if (extensionPollingInterval) clearInterval(extensionPollingInterval);
+
+            extensionPollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/extension/images/${sessionId}`);
+                    if (response.ok) {
+                        const images = await response.json();
+
+                        // Update dialogue preview with extension images
+                        Object.keys(images).forEach(index => {
+                            const previewDiv = document.getElementById(`preview-${index}`);
+                            if (previewDiv && !dialogueImages[index]) {
+                                // Convert base64 to blob for consistency
+                                fetch(images[index])
+                                    .then(res => res.blob())
+                                    .then(blob => {
+                                        const file = new File([blob], `extension-image-${index}.jpg`, { type: 'image/jpeg' });
+                                        dialogueImages[index] = file;
+
+                                        previewDiv.innerHTML = `
+                                            <img src="${images[index]}" alt="Preview">
+                                            <button class="remove-image" data-index="${index}">Remove</button>
+                                            <div style="font-size: 11px; color: #667eea; margin-top: 5px;">✓ From Extension</div>
+                                        `;
+
+                                        previewDiv.querySelector('.remove-image').addEventListener('click', () => {
+                                            delete dialogueImages[index];
+                                            previewDiv.innerHTML = '';
+                                        });
+                                    });
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Extension polling error:', error);
+                }
+            }, 2000);
+        }
+
         // Preview audio
         previewAudioBtn.addEventListener('click', async () => {
-            const voice1 = document.getElementById('voice_0').value;
-            const voice2 = document.getElementById('voice_1').value;
-
-            if (!voice1 || !voice2) {
-                alert('Please select voices for both speakers');
-                return;
+            const voices = [];
+            for (let i = 0; i < parsedSpeakers.length; i++) {
+                const voice = document.getElementById(`voice_${i}`).value;
+                if (!voice) {
+                    alert(`Please select a voice for ${parsedSpeakers[i]}`);
+                    return;
+                }
+                voices.push(voice);
             }
 
             previewAudioBtn.disabled = true;
@@ -796,8 +999,19 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
             try {
                 const formData = new FormData();
                 formData.append('script', document.getElementById('script').value);
-                formData.append('speaker1_voice', voice1);
-                formData.append('speaker2_voice', voice2);
+                formData.append('speaker1_voice', voices[0]);
+                if (voices.length > 1) {
+                    formData.append('speaker2_voice', voices[1]);
+                } else {
+                    // Send dummy or duplicate if backend expects it, but we updated backend to be optional
+                    // Actually, backend expects speaker2_voice as Form param, so we might need to send empty or handle it
+                    // Let's check app.py signature. It has default? No, it says Form(...).
+                    // We should update app.py to make speaker2_voice optional if we haven't.
+                    // Wait, I didn't make speaker2_voice optional in app.py!
+                    // I need to fix app.py to make speaker2_voice optional.
+                    // For now, I'll send empty string if single speaker.
+                    formData.append('speaker2_voice', '');
+                }
 
                 const response = await fetch('/api/preview-audio', {
                     method: 'POST',
@@ -821,7 +1035,7 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                 audioPlayer.classList.add('active');
 
                 previewAudioBtn.textContent = '✓ Preview Ready - Click to Regenerate';
-                
+
                 // Enable the Generate Video button now that we have preview audio
                 submitBtn.disabled = false;
                 submitBtn.textContent = '🎬 Generate Video';
@@ -841,10 +1055,7 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
         document.getElementById('videoForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            if (!selectedFile) {
-                alert('Please select a video file');
-                return;
-            }
+            // Video is now optional - will use random default if not provided
 
             if (!parsedSpeakers) {
                 alert('Please parse the script first');
@@ -852,11 +1063,18 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
             }
 
             const voice1 = document.getElementById('voice_0').value;
-            const voice2 = document.getElementById('voice_1').value;
 
-            if (!voice1 || !voice2) {
-                alert('Please select voices for both speakers');
+            if (!voice1) {
+                alert(`Please select a voice for ${parsedSpeakers[0]}`);
                 return;
+            }
+
+            if (parsedSpeakers.length > 1) {
+                const voice2 = document.getElementById('voice_1').value;
+                if (!voice2) {
+                    alert(`Please select a voice for ${parsedSpeakers[1]}`);
+                    return;
+                }
             }
 
             submitBtn.disabled = true;
@@ -865,12 +1083,19 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
 
             try {
                 const formData = new FormData();
-                formData.append('video', selectedFile);
+                // Only append video if user selected one
+                if (selectedFile) {
+                    formData.append('video', selectedFile);
+                }
                 formData.append('script', document.getElementById('script').value);
-                formData.append('speaker1_voice', voice1);
-                formData.append('speaker2_voice', voice2);
+                formData.append('speaker1_voice', document.getElementById('voice_0').value);
+                if (parsedSpeakers.length > 1) {
+                    formData.append('speaker2_voice', document.getElementById('voice_1').value);
+                } else {
+                    formData.append('speaker2_voice', '');
+                }
                 formData.append('loop_if_short', document.getElementById('loopIfShort').checked);
-                
+
                 // Add dialogue images if any
                 const imageIndexMap = {};
                 for (const [index, file] of Object.entries(dialogueImages)) {
@@ -881,17 +1106,15 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                 }
                 formData.append('image_indices', JSON.stringify(imageIndexMap));
                 console.log('Uploading images for dialogue indices:', Object.keys(imageIndexMap));
-                
+
                 // Add speaker avatars if any
-                if (speakerAvatars.speaker1) {
-                    formData.append('speaker1_avatar', speakerAvatars.speaker1);
-                    console.log('Uploading avatar for speaker 1:', speakerAvatars.speaker1.name);
+                if (speakerAvatars[parsedSpeakers[0]]) {
+                    formData.append('speaker1_avatar', speakerAvatars[parsedSpeakers[0]]);
                 }
-                if (speakerAvatars.speaker2) {
-                    formData.append('speaker2_avatar', speakerAvatars.speaker2);
-                    console.log('Uploading avatar for speaker 2:', speakerAvatars.speaker2.name);
+                if (parsedSpeakers.length > 1 && speakerAvatars[parsedSpeakers[1]]) {
+                    formData.append('speaker2_avatar', speakerAvatars[parsedSpeakers[1]]);
                 }
-                
+
                 // Pass preview audio path and job ID to reuse it (saves API calls!)
                 if (previewAudioPath && previewJobId) {
                     formData.append('preview_audio_path', previewAudioPath);
@@ -908,12 +1131,24 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    resultMessage.innerHTML = `
-                        <div class="success-message">
-                            ✅ Video generated successfully!<br>
-                            <a href="${data.download_url}" download style="color: #667eea; text-decoration: underline;">Download Video</a>
-                        </div>
-                    `;
+                    // Store Job ID
+                    currentJobId = data.job_id;
+
+                    // Show Result Section
+                    resultSection.style.display = 'block';
+                    resultMessage.innerHTML = ''; // Clear processing message
+
+                    // Setup Video Player
+                    videoPlayer.src = data.download_url;
+                    videoPlayer.load();
+
+                    // Setup Download Link
+                    downloadLink.href = data.download_url;
+                    downloadLink.download = `reddit_story_${data.job_id}.mp4`;
+
+                    // Scroll to result
+                    resultSection.scrollIntoView({ behavior: 'smooth' });
+
                 } else {
                     throw new Error(data.message || 'Failed to generate video');
                 }
@@ -927,5 +1162,5 @@ Stewie: Indeed, Peter. OpenAI represents a monumental leap in computational reas
         });
     </script>
 </body>
-</html>
 
+</html>

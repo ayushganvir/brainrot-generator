@@ -1,0 +1,10 @@
+/* Content script styles */
+.contentgen-highlight {
+    outline: 3px solid #667eea !important;
+    cursor: pointer !important;
+}
+
+.contentgen-highlight:hover {
+    outline: 3px solid #764ba2 !important;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.5) !important;
+}
