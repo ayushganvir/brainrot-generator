@@ -10,6 +10,18 @@ Create engaging dialogue videos like the viral "Peter & Stewie" format - automat
 
 ---
 
+## 📸 Screenshots
+
+### Main Application
+![App Interface](app-showcase.png)
+*Web interface for script parsing, voice assignment, and video generation*
+
+### Chrome Extension
+![Extension Side Panel](ext-showcase.png)
+*Side panel UI for drag-to-select image capture from any webpage*
+
+---
+
 ## 🌟 Key Features
 
 ### 🎙️ **AI-Powered Voice Generation**
@@ -89,18 +101,6 @@ python app.py
 3. Click **Load unpacked**
 4. Select the `chrome-extension` folder
 5. Pin the extension to your toolbar
-
----
-
-## 📸 Screenshots
-
-### Main Application
-![App Interface](app-showcase.png)
-*Web interface for script parsing, voice assignment, and video generation*
-
-### Chrome Extension
-![Extension Side Panel](ext-showcase.png)
-*Side panel UI for drag-to-select image capture from any webpage*
 
 ---
 
